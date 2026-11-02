@@ -4,7 +4,7 @@
 
 Status: Proposed | Approved | Implemented | Superseded by NNNN | Rejected
 Date: YYYY-MM-DD
-Authors: <people; and "drafted by <assistant>" if an AI wrote the first draft>
+Authors: <people>
 
 ## Context
 
