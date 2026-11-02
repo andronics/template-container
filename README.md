@@ -13,7 +13,7 @@ uvx copier copy --trust gh:andronics/template-container my-project
 ```
 
 It asks one question, `multi_arch`, and reads everything else from base's and the stack's answers. It needs
-template-base and the stack at `v1.0.0` or later.
+template-base `v2.0.0` and the stack `v1.0.0` or later.
 
 ## What it adds
 

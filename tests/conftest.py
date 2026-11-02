@@ -12,7 +12,13 @@ from stacking import ROOT, commit, copy, sh, sibling, stage  # noqa: E402
 
 # Each render gets a venv: link it to uv's cache instead of copying every package into it.
 os.environ.setdefault("UV_LINK_MODE", "symlink")
+# A rendered project's checks must behave as on a developer's machine or in its own CI, not as
+# a step of this repository's: GitHub Actions' GITHUB_ACTIONS turns check-wiki.py's summary into
+# ::warning annotations. CI=true stays, so a missing tool fails as it would in the project's CI.
+os.environ.pop("GITHUB_ACTIONS", None)
 
+# The base version this overlay needs, and its tests render (staged copies are tagged with it).
+BASE_VERSION = "v2.0.0"
 BASE = {"project_name": "demo", "description": "A demo project", "github_owner": "metalayerlab"}
 
 # Stack answers for each render: (stack, answers). Python's are checked here; TypeScript's
@@ -35,7 +41,8 @@ def staged(name: str, env: str, factory: pytest.TempPathFactory) -> Path | None:
 @pytest.fixture(scope="session")
 def base_src(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """template-base: $TEMPLATE_BASE, or ../template-base."""
-    src = staged("template-base", "TEMPLATE_BASE", tmp_path_factory)
+    found = sibling("template-base", "TEMPLATE_BASE")
+    src = stage(found, tmp_path_factory.mktemp("src") / "template-base", tag=BASE_VERSION) if found else None
     if src is None:
         pytest.fail("template-base must be checked out next to this repository, or set TEMPLATE_BASE")
     return src

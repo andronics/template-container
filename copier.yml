@@ -11,7 +11,7 @@
 # stack's `contrib` names. A feature overlay fills no slot and adds no required check
 # (template-base decision 0001; this repository's docs/decisions/0001).
 
-_min_copier_version: "9.6.0"
+_min_copier_version: "9.19.0"
 _subdirectory: template
 _templates_suffix: .jinja
 _answers_file: .copier-answers.container.yml
@@ -42,27 +42,49 @@ _message_after_update: |
 
 # ------------------------------- from base and the stack (read, never asked)
 
-# `copier update` re-renders the old and new versions in empty temporary directories, where
-# the other templates' answers files don't exist: there the values come from `recorded`, the
-# copy this overlay keeps in its own answers file (never asked; see decision 0001).
-recorded:
+# `copier update` replays each version in an empty directory, without the other templates'
+# answers files, so what this overlay reads from them is recorded in its own answers file
+# (template-base decision 0001, "Overlays keep a copy of base's answers"). ask: false never
+# prompts; each validator rejects a recorded copy that differs from the file it came from, so
+# Copier rereads the file and the next replay gets the new one.
+base_answers:
   type: yaml
-  default: "[[ {'base': base_answers | default({}), 'stack': stack_answers | default({})} | tojson ]]"
-  when: false
+  ask: false
+  default: "[[ dict(_external_data.base | items | rejectattr('0', 'in', ['_commit', '_src_path'])) | tojson ]]"
+  validator: >-
+    [% if _external_data.base and base_answers != dict(_external_data.base | items
+       | rejectattr('0', 'in', ['_commit', '_src_path'])) %]stale: reread .copier-answers.base.yml[% endif %]
 
-# The stack overlay: the one supported stack with an answers file.
+# The stack overlay: the supported stacks with an answers file, comma-joined (exactly one is
+# allowed; compat_check says so).
 stack:
   type: str
-  when: false
+  ask: false
   default: >-
     [%- set found = [] -%]
     [%- for name in ['python', 'typescript'] -%]
-    [%- if _external_data[name]._commit | default('') -%][%- set _ = found.append(name) -%][%- endif -%]
+    [%- if _external_data[name] -%][%- set _ = found.append(name) -%][%- endif -%]
     [%- endfor -%]
-    [[ found | join(',') if found else (stack_answers | default({})).name | default('') ]]
+    [[ found | join(',') ]]
+  validator: >-
+    [%- set found = [] -%]
+    [%- for name in ['python', 'typescript'] -%]
+    [%- if _external_data[name] -%][%- set _ = found.append(name) -%][%- endif -%]
+    [%- endfor -%]
+    [% if found and stack != found | join(',') %]stale: reread the stack's answers file[% endif %]
 
-# Fails the copy or update, with the reason, unless base and one supported stack are applied
-# at v1.0.0 or later and the stack answered container_image: true.
+stack_answers:
+  type: yaml
+  ask: false
+  default: "[[ (dict(_external_data[stack] | items | rejectattr('0', 'in', ['_commit', '_src_path', 'base_answers'])) if stack and ',' not in stack else {}) | tojson ]]"
+  validator: >-
+    [% if stack and ',' not in stack and _external_data[stack] and stack_answers != dict(_external_data[stack] | items
+       | rejectattr('0', 'in', ['_commit', '_src_path', 'base_answers'])) %]stale: reread the stack's answers file[% endif %]
+
+# Fails the copy or update, with the reason, unless base (v2.0.0 or later) and one supported stack
+# (v1.0.0 or later) are applied and the stack answered container_image: true. A replay has no
+# answers files, only the recorded copies; the real render beside it reads the files, so the
+# check runs there.
 compat_check:
   type: str
   when: false
@@ -72,29 +94,29 @@ compat_check:
     [%- set bv = b | regex_search(re, '\\1', '\\2', '\\3') -%]
     [%- set c = (_external_data[stack]._commit | default('') | string) if stack and ',' not in stack else '' -%]
     [%- set cv = c | regex_search(re, '\\1', '\\2', '\\3') -%]
-    [%- if not b and base_answers is defined -%]ok
+    [%- if not b and base_answers | default({}) -%]ok
     [%- elif not b -%][[ {}['template-container needs template-base first: .copier-answers.base.yml is missing'].stop ]]
-    [%- elif not bv or (bv | map('int') | list) < [1, 0, 0] -%][[ {}['template-container needs template-base v1.0.0 or later; this project has ' ~ b].stop ]]
+    [%- elif not bv or (bv | map('int') | list) < [2, 0, 0] -%][[ {}['template-container needs template-base v2.0.0 or later; this project has ' ~ b].stop ]]
     [%- elif ',' in stack -%][[ {}['template-container found more than one stack overlay: ' ~ stack].stop ]]
     [%- elif not stack -%][[ {}['template-container needs a stack overlay first: template-python or template-typescript'].stop ]]
     [%- elif not cv or (cv | map('int') | list) < [1, 0, 0] -%][[ {}['template-container needs template-' ~ stack ~ ' v1.0.0 or later; this project has ' ~ c].stop ]]
-    [%- elif not (_external_data[stack].container_image | default(false)) -%][[ {}['template-container needs the stack answer container_image: true (template-' ~ stack ~ ')'].stop ]]
+    [%- elif not (stack_answers.container_image | default(false)) -%][[ {}['template-container needs the stack answer container_image: true (template-' ~ stack ~ ')'].stop ]]
     [%- else -%]ok[%- endif -%]
 
-# The stack's answers this overlay renders from, or their recorded copy in a replay.
+# The stack's answers this overlay renders from.
 s:
   type: yaml
   when: false
-  default: "[[ (_external_data[stack] if stack and _external_data[stack]._commit is defined else recorded.stack) | tojson ]]"
+  default: "[[ stack_answers | tojson ]]"
 
 project_name:
   type: str
-  default: "[[ _external_data.base.project_name | default(recorded.base.project_name) ]]"
+  default: "[[ base_answers.project_name ]]"
   when: false
 
 github_owner:
   type: str
-  default: "[[ _external_data.base.github_owner | default(recorded.base.github_owner) ]]"
+  default: "[[ base_answers.github_owner ]]"
   when: false
 
 kind:
