@@ -30,15 +30,17 @@ feature overlay.
 - **It names the stacks it supports** (`_external_data`: `python`, `typescript`; a missing file reads as
   `{}`), and exactly one must be applied. Base still names no overlay, and the dependency points from the
   feature to the stack. A new stack is one line here.
-- **It fails the copy with the reason** when base or the stack is missing or older than `v1.0.0`, when
+- **It fails the copy with the reason** when base is missing or older than `v2.0.0`, the stack missing or older than `v1.0.0`, when
   there are two stacks, or when the stack's `container_image` isn't true.
 - **Release → image:** `container-build.yml` runs on `workflow_run` of the stack's `Release` workflow
   (both stacks name it that). It builds the `v*` tag that points at the run's head commit, if there is
   one, and moves `:latest`. `workflow_run` fires even when release-please used `GITHUB_TOKEN`, and the
   stack's release workflow never names this overlay's file. Manual dispatch rebuilds a given tag, as
   before.
-- **`base_answers` and `stack_answers`:** its answers file keeps a copy of what it read, because
-  `copier update` replays without the other templates' answers files (template-base#10).
+- **`base_answers`, `stack` and `stack_answers`:** recorded as answers of this overlay (`ask: false`, with
+  validators that reject a copy that differs from its file), following template-base 0001's pattern,
+  because `copier update` replays without the other templates' answers files. The templates read only the
+  recorded copies; the compatibility check passes in a replay and checks the files in the real render.
 
 ## Alternatives considered
 

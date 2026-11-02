@@ -468,7 +468,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "copier", specifier = ">=9.6,<10" },
+    { name = "copier", specifier = ">=9.19,<10" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-xdist", specifier = ">=3.6" },
     { name = "pyyaml", specifier = ">=6" },

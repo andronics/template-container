@@ -36,7 +36,9 @@ def test_checks_pass(project: Path) -> None:
 def test_never_asks_others_questions() -> None:
     """One answer, one place: base's and the stack's answers are read, never asked (decision 0001)."""
     config = yaml.safe_load((ROOT / "copier.yml").read_text())
-    asked = {k for k, v in config.items() if not k.startswith("_") and v.get("when") is not False}
+    # ask: false (the recorded copies) is never prompted.
+    asked = {k for k, v in config.items()
+             if not k.startswith("_") and v.get("when") is not False and v.get("ask") is not False}  # fmt: skip
     assert asked == {"multi_arch"}
     assert config["_answers_file"] == ".copier-answers.container.yml"
     assert config["_external_data"]["base"] == ".copier-answers.base.yml"
@@ -50,7 +52,9 @@ def test_files_by_name(project: Path, variant: str) -> None:
     assert (project / "contrib/docker/compose.yml").is_file() == ("docker" in contrib)
     assert (project / "contrib/k8s/kustomization.yaml").is_file() == ("k8s" in contrib)
     answers = yaml.safe_load((project / ".copier-answers.container.yml").read_text())
-    assert answers["stack_answers"]["name"] == MATRIX[variant][0]
+    assert answers["stack"] == MATRIX[variant][0]
+    assert answers["stack_answers"]["kind"] == MATRIX[variant][1]["kind"]
+    assert "base_answers" not in answers["stack_answers"]
     assert answers["base_answers"]["project_name"] == "demo"
 
 
@@ -100,7 +104,7 @@ def test_docker_checks(project: Path) -> None:
 
 @pytest.mark.parametrize(("case", "error"), [
     ("no base", "needs template-base first"),
-    ("old base", "needs template-base v1.0.0 or later; this project has v0.9.0"),
+    ("old base", "needs template-base v2.0.0 or later; this project has v1.0.0"),
     ("no stack", "needs a stack overlay first"),
     ("no image", "needs the stack answer container_image: true (template-python)"),
     ("two stacks", "found more than one stack overlay: python,typescript"),
@@ -114,7 +118,7 @@ def test_needs_base_and_a_stack(case: str, error: str, base_src: Path, stacks: d
     if python is None:
         pytest.skip("template-python isn't checked out next to this repository")
     if case == "old base":
-        copy(stage(base_src, tmp_path / "old-base", tag="v0.9.0"), dst, BASE)
+        copy(stage(base_src, tmp_path / "old-base", tag="v1.0.0"), dst, BASE)
     elif case != "no base":
         copy(base_src, dst, BASE)
     if case == "no image":
@@ -143,10 +147,36 @@ def test_update_keeps_the_stack_values(base_src: Path, stacks: dict, container_s
     answers = project / ".copier-answers.container.yml"
     answers.write_text(answers.read_text().replace(str(container_src), str(newer)))
     commit(project)
-    sh("uvx", "--from", "copier>=9.6,<10", "copier", "update", "-a", ".copier-answers.container.yml", "--trust",
+    sh("uvx", "--from", "copier>=9.19,<10", "copier", "update", "-a", ".copier-answers.container.yml", "--trust",
        "--skip-tasks", "--defaults", "--conflict", "inline", "--vcs-ref", "v1.0.1", cwd=project)  # fmt: skip
     changed = sorted(line[3:] for line in sh("git", "status", "--porcelain", cwd=project).splitlines())
     assert changed == [".copier-answers.container.yml", ".github/workflows/container-cleanup.yml"]
     assert "cut-off: 8d" in (project / ".github/workflows/container-cleanup.yml").read_text()
     assert "9090" in compose.read_text() and "# a project edit" in compose.read_text()
+    assert "<<<<<<<" not in sh("git", "diff", cwd=project)
+
+
+def test_stack_answer_change_reaches_the_manifests(base_src: Path, stacks: dict, container_src: Path,
+                                                    tmp_path: Path) -> None:  # fmt: skip
+    """The stack's `port` changes (an update with -d), then this overlay updates: the validator finds its
+    recorded copy stale, rereads the stack's answers, and compose publishes the new port."""
+    project = render(base_src, stacks["python"], container_src, tmp_path / "p",
+                     {"kind": "service", "container_image": True, "contrib": ["docker"], "port": 9090})  # fmt: skip
+    sh("uvx", "--from", "copier>=9.19,<10", "copier", "update", "-a", ".copier-answers.stack-python.yml", "--trust",
+       "--skip-tasks", "--defaults", "--conflict", "inline", "--vcs-ref", "v1.0.0", "-d", "port=9191",
+       cwd=project)  # fmt: skip
+    commit(project)
+    newer = tmp_path / "newer"
+    shutil.copytree(container_src, newer)
+    cleanup = newer / "template/.github/workflows/container-cleanup.yml.jinja"
+    cleanup.write_text(cleanup.read_text().replace("cut-off: 7d", "cut-off: 8d"))
+    sh(*GIT, "commit", "-qam", "newer", cwd=newer)
+    sh("git", "tag", "v1.0.1", cwd=newer)
+    answers = project / ".copier-answers.container.yml"
+    answers.write_text(answers.read_text().replace(str(container_src), str(newer)))
+    commit(project)
+    sh("uvx", "--from", "copier>=9.19,<10", "copier", "update", "-a", ".copier-answers.container.yml", "--trust",
+       "--skip-tasks", "--defaults", "--conflict", "inline", "--vcs-ref", "v1.0.1", cwd=project)  # fmt: skip
+    assert "9191" in (project / "contrib/docker/compose.yml").read_text()
+    assert yaml.safe_load(answers.read_text())["stack_answers"]["port"] == 9191
     assert "<<<<<<<" not in sh("git", "diff", cwd=project)
