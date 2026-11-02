@@ -1,0 +1,35 @@
+# [[ project_name ]] on Kubernetes: a kustomize base, applied directly or from Flux.
+# See the wiki's Deployment page.
+#
+#   kubectl apply -k contrib/k8s
+#
+# Overlays (per cluster or environment) live in the cluster's GitOps repo and
+# point at this directory: resources: [https://github.com/[[ github_owner ]]/[[ project_name ]]//contrib/k8s?ref=v0.0.0]
+#
+[% if kind == 'web' %]
+# config.json is public (anyone who loads the app can read it): never a secret.
+[% else %]
+# Secrets: never here. Create them by hand, or SOPS-encrypt them in the GitOps
+# repo, and mount them as files ([[ env_prefix ]]<KEY>_FILE).
+[% endif %]
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: [[ project_name ]]
+labels:
+  - pairs:
+      app.kubernetes.io/name: [[ project_name ]]
+      app.kubernetes.io/part-of: [[ project_name ]]
+    includeSelectors: false
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - networkpolicy.yaml
+# config.[[ 'json' if kind == 'web' else 'yaml' ]] becomes a ConfigMap; the hash suffix rolls the Deployment when it changes.
+configMapGenerator:
+  - name: [[ project_name ]]-config
+    files:
+      - config.[[ 'json' if kind == 'web' else 'yaml' ]]
+images:
+  - name: [[ image ]]
+    newTag: "0.0.0" # x-release-please-version

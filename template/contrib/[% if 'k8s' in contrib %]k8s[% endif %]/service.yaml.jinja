@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: [[ project_name ]]
+  labels:
+    app.kubernetes.io/name: [[ project_name ]]
+    app.kubernetes.io/component: server
+spec:
+  selector:
+    app.kubernetes.io/name: [[ project_name ]]
+    app.kubernetes.io/component: server
+  ports:
+    - {name: http, port: [[ port ]], targetPort: http}
+[% for p in extra_ports %]
+    - {name: tcp-[[ p ]], port: [[ p ]], targetPort: tcp-[[ p ]]}
+[% endfor %]

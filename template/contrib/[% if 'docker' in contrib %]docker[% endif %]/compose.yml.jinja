@@ -1,0 +1,58 @@
+# [[ project_name ]] under Docker Compose. Template-owned skeleton; see the wiki's
+# Deployment page.
+#
+#   docker compose -f contrib/docker/compose.yml up -d
+[% if kind == 'web' %]
+#
+# Config: ./config.json (from public/config.json), mounted read-only over the
+# image's. No secrets: anyone who loads the app can read it.
+[% else %]
+#   docker exec [[ project_name ]] [[ project_name ]] config     # effective config and sources
+#
+# Config: ./config/config.yaml (from contrib/[[ project_name ]].example.yaml), mounted
+# read-only. Secrets: as files under ./secrets, passed with [[ env_prefix ]]<KEY>_FILE.
+[% endif %]
+
+services:
+  [[ project_name ]]:
+    image: [[ image ]]:0.0.0 # x-release-please-version
+    container_name: [[ project_name ]]
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:[[ port ]]:[[ port ]]"   # loopback only: put a reverse proxy in front
+[% for p in extra_ports %]
+      - "127.0.0.1:[[ p ]]:[[ p ]]"
+[% endfor %]
+
+    volumes:
+[% if kind == 'web' %]
+      - ./config.json:/usr/share/nginx/html/config.json:ro
+[% else %]
+      - ./config:/etc/[[ project_name ]]:ro
+      - ./state:/var/lib/[[ project_name ]]
+      # - ./secrets:/run/secrets/[[ project_name ]]:ro
+
+    environment:
+[% if puid_pgid %]
+      PUID: "1000"
+      PGID: "1000"
+[% endif %]
+      TZ: "[[ timezone ]]"
+      # [[ env_prefix ]]LOG_LEVEL: DEBUG
+      # [[ env_prefix ]]SOME_TOKEN_FILE: /run/secrets/[[ project_name ]]/some-token
+[% endif %]
+
+    # Hardening: read-only root, no new privileges, only the capabilities it needs
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+[% if puid_pgid %]
+    # The entrypoint chowns the state directory, then drops to PUID:PGID
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]
+[% endif %]
+
+    # The image's HEALTHCHECK polls [[ health_path ]]

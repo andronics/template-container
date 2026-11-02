@@ -1,0 +1,10 @@
+# Written by Copier: never edit by hand. `copier update` reads it to know
+# which template version and answers this project was made from.
+[[ _copier_answers | to_nice_yaml -]]
+# What this overlay last read from base's and the stack's answers files. Never asked:
+# `copier update` renders in an empty directory without their files, and reads them here.
+[[ {'base_answers': {'project_name': project_name, 'github_owner': github_owner},
+    'stack_answers': {'name': stack, 'kind': kind, 'port': port, 'extra_ports': extra_ports,
+                      'health_path': health_path, 'timezone': timezone, 'puid_pgid': puid_pgid,
+                      'contrib': contrib, 'package_name': s.package_name | default(none), 'container_image': true}}
+   | to_nice_yaml -]]

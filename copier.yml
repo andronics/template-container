@@ -1,0 +1,151 @@
+# template-container: a feature overlay for a project that ships a container image. It goes
+# on top of template-base and a code stack overlay (template-python or template-typescript),
+# whose answers it reads (it never asks their questions again):
+#
+#   uvx copier copy --trust gh:andronics/template-base my-project
+#   uvx copier copy --trust gh:andronics/template-python my-project      # container_image: true
+#   uvx copier copy --trust gh:andronics/template-container my-project
+#
+# The stack owns the Dockerfile (it is language-specific) and its `contrib` answer; this adds
+# the image's build and cleanup workflows (container-*) and the docker and k8s manifests the
+# stack's `contrib` names. A feature overlay fills no slot and adds no required check
+# (template-base decision 0001; this repository's docs/decisions/0001).
+
+_min_copier_version: "9.6.0"
+_subdirectory: template
+_templates_suffix: .jinja
+_answers_file: .copier-answers.container.yml
+# The stacks this overlay supports; exactly one must be applied. A missing file reads as {}.
+_external_data:
+  base: .copier-answers.base.yml
+  python: .copier-answers.stack-python.yml
+  typescript: .copier-answers.stack-typescript.yml
+
+# GitHub Actions uses ${{ }}, so Jinja uses [[ ]] / [% %] instead.
+_envops:
+  variable_start_string: "[["
+  variable_end_string: "]]"
+  block_start_string: "[%"
+  block_end_string: "%]"
+  comment_start_string: "[#!"
+  comment_end_string: "!#]"
+  keep_trailing_newline: true
+  trim_blocks: true
+  lstrip_blocks: true
+
+_message_after_copy: |
+  [[ project_name ]] builds [[ image ]]: container-build.yml on pushes, PRs and each release.
+  Next: git add -A && git commit -m "chore: add template-container"
+
+_message_after_update: |
+  Next: resolve any <<<<<<< markers, run sh scripts/post-update.sh, review git diff and commit.
+
+# ------------------------------- from base and the stack (read, never asked)
+
+# `copier update` re-renders the old and new versions in empty temporary directories, where
+# the other templates' answers files don't exist: there the values come from `recorded`, the
+# copy this overlay keeps in its own answers file (never asked; see decision 0001).
+recorded:
+  type: yaml
+  default: "[[ {'base': base_answers | default({}), 'stack': stack_answers | default({})} | tojson ]]"
+  when: false
+
+# The stack overlay: the one supported stack with an answers file.
+stack:
+  type: str
+  when: false
+  default: >-
+    [%- set found = [] -%]
+    [%- for name in ['python', 'typescript'] -%]
+    [%- if _external_data[name]._commit | default('') -%][%- set _ = found.append(name) -%][%- endif -%]
+    [%- endfor -%]
+    [[ found | join(',') if found else (stack_answers | default({})).name | default('') ]]
+
+# Fails the copy or update, with the reason, unless base and one supported stack are applied
+# at v1.0.0 or later and the stack answered container_image: true.
+compat_check:
+  type: str
+  when: false
+  default: >-
+    [%- set re = '^v?(\\d+)\\.(\\d+)\\.(\\d+)' -%]
+    [%- set b = _external_data.base._commit | default('') | string -%]
+    [%- set bv = b | regex_search(re, '\\1', '\\2', '\\3') -%]
+    [%- set c = (_external_data[stack]._commit | default('') | string) if stack and ',' not in stack else '' -%]
+    [%- set cv = c | regex_search(re, '\\1', '\\2', '\\3') -%]
+    [%- if not b and base_answers is defined -%]ok
+    [%- elif not b -%][[ {}['template-container needs template-base first: .copier-answers.base.yml is missing'].stop ]]
+    [%- elif not bv or (bv | map('int') | list) < [1, 0, 0] -%][[ {}['template-container needs template-base v1.0.0 or later; this project has ' ~ b].stop ]]
+    [%- elif ',' in stack -%][[ {}['template-container found more than one stack overlay: ' ~ stack].stop ]]
+    [%- elif not stack -%][[ {}['template-container needs a stack overlay first: template-python or template-typescript'].stop ]]
+    [%- elif not cv or (cv | map('int') | list) < [1, 0, 0] -%][[ {}['template-container needs template-' ~ stack ~ ' v1.0.0 or later; this project has ' ~ c].stop ]]
+    [%- elif not (_external_data[stack].container_image | default(false)) -%][[ {}['template-container needs the stack answer container_image: true (template-' ~ stack ~ ')'].stop ]]
+    [%- else -%]ok[%- endif -%]
+
+# The stack's answers this overlay renders from, or their recorded copy in a replay.
+s:
+  type: yaml
+  when: false
+  default: "[[ (_external_data[stack] if stack and _external_data[stack]._commit is defined else recorded.stack) | tojson ]]"
+
+project_name:
+  type: str
+  default: "[[ _external_data.base.project_name | default(recorded.base.project_name) ]]"
+  when: false
+
+github_owner:
+  type: str
+  default: "[[ _external_data.base.github_owner | default(recorded.base.github_owner) ]]"
+  when: false
+
+kind:
+  type: str
+  default: "[[ s.kind ]]"
+  when: false
+
+port:
+  type: int
+  default: "[[ s.port | default(8080) ]]"
+  when: false
+
+extra_ports:
+  type: yaml
+  default: "[[ s.extra_ports | default([]) | tojson ]]"
+  when: false
+
+health_path:
+  type: str
+  default: "[[ s.health_path | default('/healthz') ]]"
+  when: false
+
+timezone:
+  type: str
+  default: "[[ s.timezone | default('Europe/London') ]]"
+  when: false
+
+puid_pgid:
+  type: bool
+  default: "[[ s.puid_pgid | default(false) ]]"
+  when: false
+
+contrib:
+  type: yaml
+  default: "[[ s.contrib | default([]) | tojson ]]"
+  when: false
+
+# Python's settings prefix comes from its package name; TypeScript's from the project name.
+env_prefix:
+  type: str
+  default: "[[ (s.package_name | default(project_name | replace('-', '_'))) | upper ]]_"
+  when: false
+
+image:
+  type: str
+  default: "ghcr.io/[[ github_owner ]]/[[ project_name ]]"
+  when: false
+
+# ---------------------------------------------------------------- questions
+
+multi_arch:
+  type: bool
+  help: Build linux/arm64 as well as linux/amd64?
+  default: true

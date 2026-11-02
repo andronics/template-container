@@ -1,0 +1,4 @@
+# GitHub's About box for this repository.
+description = "Copier feature overlay for a container image on template-base and a code stack: GHCR build and cleanup workflows, docker and k8s manifests"
+homepage = ""
+topics = ["copier", "copier-template", "docker", "kubernetes", "ghcr", "template"]

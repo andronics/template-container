@@ -1,0 +1,80 @@
+# As a non-root user, read-only root filesystem, no capabilities (PSS restricted).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: [[ project_name ]]
+  labels:
+    app.kubernetes.io/name: [[ project_name ]]
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+[% if kind != 'web' %]
+  # State is on an emptyDir: swap it for a PersistentVolumeClaim (and keep
+  # Recreate, so there are never two writers) if it must survive the pod.
+  strategy:
+    type: Recreate
+[% endif %]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: [[ project_name ]]
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: [[ project_name ]]
+        app.kubernetes.io/component: server
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: [[ project_name ]]
+          image: [[ image ]]
+[% if kind != 'web' %]
+          args: ["serve"]
+[% endif %]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+[% if kind != 'web' %]
+          env:
+            - {name: TZ, value: "[[ timezone ]]"}
+            - {name: [[ env_prefix ]]CONFIG, value: /etc/[[ project_name ]]/config.yaml}
+[% endif %]
+          ports:
+            - {name: http, containerPort: [[ port ]]}
+[% for p in extra_ports %]
+            - {name: tcp-[[ p ]], containerPort: [[ p ]]}
+[% endfor %]
+          readinessProbe:
+            httpGet: {path: [% if kind == 'web' %][[ health_path ]][% else %]/readyz[% endif %], port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: [[ health_path ]], port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          resources:
+            requests: {cpu: 10m, memory: 64Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+[% if kind == 'web' %]
+            - {name: config, mountPath: /usr/share/nginx/html/config.json, subPath: config.json, readOnly: true}
+[% else %]
+            - {name: config, mountPath: /etc/[[ project_name ]], readOnly: true}
+            - {name: state, mountPath: /var/lib/[[ project_name ]]}
+[% endif %]
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: config
+          configMap: {name: [[ project_name ]]-config}
+[% if kind != 'web' %]
+        - name: state
+          emptyDir: {}
+[% endif %]
+        - name: tmp
+          emptyDir: {medium: Memory, sizeLimit: 64Mi}

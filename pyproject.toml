@@ -1,0 +1,25 @@
+[project]
+name = "template-container"
+version = "0.0.0"
+description = "template-container (Copier): this file only drives the template's own tests"
+requires-python = ">=3.13"
+
+[dependency-groups]
+dev = [
+    "copier>=9.6,<10",
+    "pytest>=8.3",
+    "pytest-xdist>=3.6",
+    "pyyaml>=6",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not docker'"
+markers = ["docker: runs checks through Docker (uv run pytest -m docker)"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["template"]
