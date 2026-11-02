@@ -23,6 +23,7 @@ workflows and manifests. These instructions are for changing **the overlay**. Wh
 ## Rules
 
 - Keep every render green: `uv run pytest -n auto`. Pin actions to SHAs. Never credit an AI. Never create tags or releases.
+- Pins are bumped by Renovate (template-base's decision 0002, `pin-bumps.yml`): don't hand-bump one unless it's urgent.
 - Asking the user something? Give your recommendation and why. Reply tersely.
 
 ## Definition of done

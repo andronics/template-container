@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["local>andronics/template-base//renovate/templates.json5"],
+  "customManagers": [
+    {
+      "description": "kubectl's image in the tests: registry.k8s.io gives no release dates, so read Kubernetes' GitHub releases, whose tags the image shares",
+      "customType": "regex",
+      "managerFilePatterns": ["tests/**"],
+      "matchStrings": ["(?:^|[\\s\"'=(])registry\\.k8s\\.io/kubectl:(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\b"],
+      "depNameTemplate": "registry.k8s.io/kubectl",
+      "packageNameTemplate": "kubernetes/kubernetes",
+      "datasourceTemplate": "github-releases"
+    }
+  ]
+}
