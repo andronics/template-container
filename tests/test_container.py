@@ -101,7 +101,7 @@ def test_docker_checks(project: Path) -> None:
     if (project / "contrib/docker/compose.yml").is_file():
         cmds.append(("docker", "compose", "-f", "contrib/docker/compose.yml", "config", "--quiet"))
     if (project / "contrib/k8s").is_dir():
-        cmds.append(("sh", "-c", "docker run --rm -v \"$PWD/contrib/k8s:/k8s\" registry.k8s.io/kubectl:v1.34.1 kustomize /k8s"
+        cmds.append(("sh", "-c", "docker run --rm -v \"$PWD/contrib/k8s:/k8s\" registry.k8s.io/kubectl:v1.37.2 kustomize /k8s"
                      " | docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary"))  # fmt: skip
     for cmd in cmds:
         result = run(project, *cmd)
