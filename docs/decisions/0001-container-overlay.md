@@ -2,7 +2,7 @@
 
 Status: Proposed
 Date: 2026-11-02
-Authors: Stephen Cox; drafted by Claude (Claude Code)
+Authors: Stephen Cox
 
 ## Context
 
