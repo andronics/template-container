@@ -27,6 +27,12 @@ def run(project: Path, *cmd: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=project, capture_output=True, text=True, env=env)
 
 
+def test_renders_once_per_variant(request: pytest.FixtureRequest, variant: str) -> None:
+    """Under xdist, each variant's tests share one worker, so it renders once (conftest.py, --dist loadgroup)."""
+    if os.environ.get("PYTEST_XDIST_WORKER") and request.config.getoption("dist") == "loadgroup":
+        assert request.node.nodeid.endswith(f"@{variant}"), "xdist isn't grouping by variant"
+
+
 def test_checks_pass(project: Path) -> None:
     result = checks(project)
     assert result.returncode == 0, result.stdout + result.stderr
