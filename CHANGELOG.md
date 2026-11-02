@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/andronics/template-container/compare/v2.0.1...v2.0.2) (2026-11-02)
+
+
+### 📚 Documentation
+
+* decision record 0001 credits people only ([#11](https://github.com/andronics/template-container/issues/11)) ([88d16d5](https://github.com/andronics/template-container/commit/88d16d543af635ef5f3a8588c3c8ed38b900201b))
+
 ## [2.0.1](https://github.com/andronics/template-container/compare/v2.0.0...v2.0.1) (2026-11-02)
 
 
