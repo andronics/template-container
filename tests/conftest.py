@@ -12,6 +12,10 @@ from stacking import ROOT, commit, copy, sh, sibling, stage  # noqa: E402
 
 # Each render gets a venv: link it to uv's cache instead of copying every package into it.
 os.environ.setdefault("UV_LINK_MODE", "symlink")
+# A rendered project's checks must behave as on a developer's machine or in its own CI, not as
+# a step of this repository's: GitHub Actions' GITHUB_ACTIONS turns check-wiki.py's summary into
+# ::warning annotations. CI=true stays, so a missing tool fails as it would in the project's CI.
+os.environ.pop("GITHUB_ACTIONS", None)
 
 # The base version this overlay needs, and its tests render (staged copies are tagged with it).
 BASE_VERSION = "v2.0.0"
