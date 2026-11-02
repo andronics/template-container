@@ -7,7 +7,9 @@ requires-python = ">=3.13"
 [dependency-groups]
 dev = [
     "copier>=9.19,<10",
-    "pytest>=8.3",
+    # <9.2: pytest 9.2 ignores the nodeid xdist 3.8 rewrites, so --dist loadgroup stops grouping
+    # (pytest-dev/pytest-xdist#1386, fixed after 3.8.0). Lift it with an xdist release that has the fix.
+    "pytest>=8.3,<9.2",
     "pytest-xdist>=3.6",
     "pyyaml>=6",
 ]
@@ -17,7 +19,10 @@ package = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-m 'not docker'"
+addopts = "-m 'not docker' --dist loadgroup"
+# A passing test's tmp_path goes when it ends; only the last run's failures are kept.
+tmp_path_retention_policy = "failed"
+tmp_path_retention_count = 1
 markers = ["docker: runs checks through Docker (uv run pytest -m docker)"]
 
 [tool.ruff]
