@@ -74,6 +74,17 @@ def test_reads_the_stack(project: Path, variant: str) -> None:
         assert "3128" in (project / "contrib/docker/compose.yml").read_text()
 
 
+def test_networkpolicy_scraper_allowance(project: Path, variant: str) -> None:
+    """A python service's /metrics (template-python 0007) gets a commented scraper allowance; nothing is opened."""
+    policy = project / "contrib/k8s/networkpolicy.yaml"
+    if not policy.is_file():
+        return
+    text = policy.read_text()
+    stack, answers = MATRIX[variant]
+    assert ("# A Prometheus scraper" in text) == (stack == "python" and answers["kind"] == "service")
+    assert len(yaml.safe_load(text)["spec"]["ingress"]) == 1
+
+
 def test_release_follows_the_stack_by_name(project: Path) -> None:
     """The image builds after the stack's `Release` workflow, which never names this overlay."""
     build = yaml.safe_load((project / ".github/workflows/container-build.yml").read_text())
