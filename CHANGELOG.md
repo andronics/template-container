@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/andronics/template-container/compare/v2.0.2...v2.1.0) (2026-11-03)
+
+
+### ✨ Features
+
+* a commented Prometheus scraper allowance in the k8s NetworkPolicy ([#13](https://github.com/andronics/template-container/issues/13)) ([0a2abdd](https://github.com/andronics/template-container/commit/0a2abdd4682babdcb4d518588eb6a753b15d2394))
+
 ## [2.0.2](https://github.com/andronics/template-container/compare/v2.0.1...v2.0.2) (2026-11-02)
 
 
