@@ -27,8 +27,13 @@ The Dockerfile, the systemd unit and the manifest check stay in the stack: they'
 
 ## Setup notes
 
-`container-cleanup.yml` can delete package versions only if the package grants this repository's Actions
-the Admin role (package settings → Manage Actions access), or with a `PACKAGES_DELETE_TOKEN` secret.
+`container-cleanup.yml` uses `GITHUB_TOKEN`, which can delete the image's versions while the package grants
+this repository's Actions the Admin role (package settings → Manage Actions access). A package that
+`container-build.yml` published has it by default. Otherwise add a `PACKAGES_DELETE_TOKEN` secret: a classic
+personal access token with `read:packages` and `delete:packages`, owned by the account that owns the package
+(for a personal account) or by an organisation member with admin access to it. Its `account` input is `user`
+when base's `owner_is_org` is false, and the organisation's name otherwise
+([`docs/decisions/0002`](docs/decisions/0002-cleanup-account-and-token.md)).
 
 ## Where this came from
 
