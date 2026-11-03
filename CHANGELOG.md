@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/andronics/template-container/compare/v2.1.0...v2.1.1) (2026-11-03)
+
+
+### 🐛 Bug Fixes
+
+* container-cleanup passes account: user for a personal account ([#15](https://github.com/andronics/template-container/issues/15)) ([b154eb1](https://github.com/andronics/template-container/commit/b154eb1f90649428efca1f7c6119f8108d5eff96))
+
 ## [2.1.0](https://github.com/andronics/template-container/compare/v2.0.2...v2.1.0) (2026-11-03)
 
 
