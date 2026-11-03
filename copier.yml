@@ -119,6 +119,15 @@ github_owner:
   default: "[[ base_answers.github_owner ]]"
   when: false
 
+# Base's owner_is_org (v2.0.8 and later). Before it, base's own rule: code_owners naming
+# @owner means a personal account. container-cleanup.yml's `account` needs it (decision 0002).
+owner_is_org:
+  type: bool
+  default: >-
+    [[ base_answers.owner_is_org if base_answers.owner_is_org is defined
+       else ('@' ~ github_owner | lower) not in (base_answers.code_owners | default('') | lower).split() ]]
+  when: false
+
 kind:
   type: str
   default: "[[ s.kind ]]"

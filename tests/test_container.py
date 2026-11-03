@@ -106,6 +106,50 @@ def test_manifests(project: Path) -> None:
     assert result.returncode == 0 and "manifests OK" in result.stdout, result.stdout + result.stderr
 
 
+def cleanup_step(project: Path) -> dict:
+    """The snok step's inputs; the action stays pinned by SHA."""
+    text = (project / ".github/workflows/container-cleanup.yml").read_text()
+    assert re.search(r"uses: snok/container-retention-policy@[0-9a-f]{40} # v", text)
+    (step,) = yaml.safe_load(text)["jobs"]["cleanup"]["steps"]
+    return step["with"]
+
+
+def test_cleanup_account_for_an_organisation(project: Path) -> None:
+    """An organisation's packages are /orgs/<owner>/packages: snok's `account` is its name (decision 0002)."""
+    step = cleanup_step(project)
+    assert step["account"] == "metalayerlab"
+    assert step["token"] == "${{ secrets.PACKAGES_DELETE_TOKEN || secrets.GITHUB_TOKEN }}"
+
+
+@pytest.mark.parametrize("owner_is_org", [False, True])
+def test_cleanup_account_follows_owner_is_org(owner_is_org: bool, base_src: Path, stacks: dict, container_src: Path,
+                                              tmp_path: Path) -> None:  # fmt: skip
+    """A personal account's packages are /user/packages, so `account: user`; snok reads any other value as an
+    organisation and gets a 404 (trackie, 2026-11-03). Before base v2.0.8 there's no owner_is_org: code_owners
+    naming @owner means a personal account, as base's own default says."""
+    if stacks["python"] is None:
+        pytest.skip("template-python isn't checked out next to this repository")
+    owner = "metalayerlab" if owner_is_org else "andronics"
+    dst = tmp_path / "p"
+    copy(base_src, dst, {**BASE, "github_owner": owner, "owner_is_org": owner_is_org})
+    copy(stacks["python"], dst, {"kind": "cli", "container_image": True})
+    copy(container_src, dst, {})
+    expected = owner if owner_is_org else "user"
+    step = cleanup_step(dst)
+    assert step["account"] == expected
+    assert step["token"] == "${{ secrets.PACKAGES_DELETE_TOKEN || secrets.GITHUB_TOKEN }}"
+    assert step["image-names"] == "demo"
+    text = (dst / ".github/workflows/container-cleanup.yml").read_text()
+    assert "read:packages and delete:packages" in text
+    # An older base: no owner_is_org recorded.
+    answers = dst / ".copier-answers.base.yml"
+    old = yaml.safe_load(answers.read_text())
+    assert old.pop("owner_is_org") is owner_is_org
+    answers.write_text(yaml.safe_dump(old))
+    copy(container_src, dst, {}, overwrite=True)
+    assert cleanup_step(dst)["account"] == expected
+
+
 @pytest.mark.docker
 def test_docker_checks(project: Path) -> None:
     cmds = [("docker", "run", "--rm", "-v", f"{project}:/repo", "-w", "/repo", "rhysd/actionlint:1.7.12", "-color")]
