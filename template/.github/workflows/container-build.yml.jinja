@@ -118,7 +118,7 @@ jobs:
             type=raw,value=latest,enable=${{ needs.resolve.outputs.latest == 'true' }}
 
 [% if kind in ['service', 'web'] %]
-      # Build for this runner only and prove the container starts and answers.
+      # Build for this runner only and prove the container starts, answers and reports healthy.
       - name: Build for the smoke test
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -130,23 +130,46 @@ jobs:
 
       - name: Smoke test ([[ health_path ]])
         run: |
-          docker run -d --name smoke -p 127.0.0.1:[[ port ]]:[[ port ]] smoke:ci
+          # --health-start-interval runs the image's own HEALTHCHECK every second during its start
+          # period, so a healthy container says so in seconds instead of after the first 30s interval.
+          docker run -d --name smoke --health-start-interval=1s -p 127.0.0.1:[[ port ]]:[[ port ]] smoke:ci
+          fail() { echo "::error::$1"; docker logs smoke; exit 1; }
+
+          # From the runner: the published port answers.
+          answered=""
           for _ in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:[[ port ]][[ health_path ]]; then
-[% if kind == 'web' %]
-              # / and any route are the app's shell (index.html), so a route survives a reload
-              for path in / /some/route; do
-                curl -fsS "http://127.0.0.1:[[ port ]]$path" | grep -q '<div id="root">' \
-                  || { echo "::error::$path is not the app's index.html"; docker logs smoke; exit 1; }
-              done
-[% endif %]
-              echo; echo "✓ healthy"; docker rm -f smoke > /dev/null; exit 0
-            fi
+            if curl -fsS http://127.0.0.1:[[ port ]][[ health_path ]]; then answered=1; echo; break; fi
             sleep 1
           done
-          echo "::error::no answer on [[ health_path ]] after 30s"
-          docker logs smoke
-          exit 1
+          [ -n "$answered" ] || fail "no answer on [[ health_path ]] after 30s"
+[% if kind == 'web' %]
+          # / and any route are the app's shell (index.html), so a route survives a reload
+          for path in / /some/route; do
+            curl -fsS "http://127.0.0.1:[[ port ]]$path" | grep -q '<div id="root">' \
+              || fail "$path is not the app's index.html"
+          done
+[% endif %]
+
+          # The gate: Docker's own health status, from the image's HEALTHCHECK. An image without
+          # one has no .State.Health, so there is nothing to wait for.
+          status=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' smoke)
+          if [ -z "$status" ]; then
+            echo "The image has no HEALTHCHECK: not waiting for a health status"
+          else
+            for _ in $(seq 1 120); do
+              read -r state status <<< "$(docker inspect --format '{{.State.Status}} {{.State.Health.Status}}' smoke)"
+              [ "$state" = running ] || fail "the container stopped ($state) before it reported healthy"
+              [ "$status" = starting ] || break
+              sleep 1
+            done
+            if [ "$status" != healthy ]; then
+              echo "Last health check:"
+              docker inspect --format '{{json .State.Health}}' smoke \
+                | jq -r '.Log[-1] // empty | "exit code \(.ExitCode)\n\(.Output)"'
+              fail "the HEALTHCHECK says $status, not healthy, within 120s"
+            fi
+          fi
+          echo "✓ healthy"; docker rm -f smoke > /dev/null
 
 [% endif %]
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
