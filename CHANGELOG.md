@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.3](https://github.com/andronics/template-container/compare/v2.2.2...v2.2.3) (2026-11-04)
+
+
+### 🐛 Bug Fixes
+
+* **copier:** descriptions with any Unicode and any length scaffold cleanly ([#24](https://github.com/andronics/template-container/issues/24)) ([39a9028](https://github.com/andronics/template-container/commit/39a9028843940ede032e8cd0592609c903edf7b6))
+
 ## [2.2.2](https://github.com/andronics/template-container/compare/v2.2.1...v2.2.2) (2026-11-04)
 
 
