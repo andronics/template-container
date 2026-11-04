@@ -1,8 +1,8 @@
 # AGENTS.md: working on template-container
 
 This repository is a [Copier](https://copier.readthedocs.io/) **feature overlay**: it is applied on top of
-template-base and a code stack (template-python, template-typescript), and adds a container image's
-workflows and manifests. These instructions are for changing **the overlay**. Why:
+template-base and a code stack (template-python, template-typescript, template-go), and adds a container
+image's workflows and manifests. These instructions are for changing **the overlay**. Why:
 `docs/decisions/0001-container-overlay.md` and template-base's decision 0001.
 
 ## Layout

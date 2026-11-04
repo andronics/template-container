@@ -1,5 +1,6 @@
 """Render template-base, a code stack (template-python, template-typescript) with an image, then
-template-container, and check the projects that result.
+template-container, and check the projects that result. template-go, which has no template yet, is
+checked through a stand-in for its answers file.
 
     uv run pytest -n auto         # every test (siblings: ../template-base, ../template-python, ...)
     uv run pytest -m docker       # also compose, kustomize and kubeconform, and actionlint, through Docker
@@ -188,6 +189,53 @@ def test_needs_base_and_a_stack(case: str, error: str, base_src: Path, stacks: d
         copy(python, dst, {"kind": "cli"})
         (dst / ".copier-answers.stack-typescript.yml").write_text("_commit: v1.0.0\n_src_path: x\n")
     with pytest.raises(Exception, match=re.escape(error)):
+        copy(container_src, dst, {})
+
+
+def go_answers(dst: Path, **answers: object) -> None:
+    """A stand-in for template-go's `.copier-answers.stack-go.yml` (it has no template yet): its 0001's
+    questions, no `puid_pgid`, and the recorded `base_answers` every stack keeps."""
+    base = yaml.safe_load((dst / ".copier-answers.base.yml").read_text())
+    data = {"_commit": "v1.0.0", "_src_path": "gh:andronics/template-go", "kind": "service",
+            "module_path": "github.com/metalayerlab/demo", "go_version": "1.26", "port": 8080, "extra_ports": [],
+            "health_path": "/healthz", "container_image": True, "contrib": ["docker", "k8s"],
+            "timezone": "Europe/London", "integration_ci": False,
+            "base_answers": {k: v for k, v in base.items() if k not in ("_commit", "_src_path")}, **answers}  # fmt: skip
+    (dst / ".copier-answers.stack-go.yml").write_text(yaml.safe_dump(data, sort_keys=False))
+
+
+@pytest.mark.parametrize("kind", ["service", "cli"])
+def test_go_stack(kind: str, base_src: Path, container_src: Path, tmp_path: Path) -> None:
+    """template-go is a supported stack: its answers are read, and its missing `puid_pgid` reads as false
+    (its distroless image has no shell for the shim; template-go 0001)."""
+    dst = tmp_path / "p"
+    copy(base_src, dst, BASE)
+    go_answers(dst, kind=kind, extra_ports=[3128])
+    copy(container_src, dst, {})
+    answers = yaml.safe_load((dst / ".copier-answers.container.yml").read_text())
+    assert answers["stack"] == "go"
+    assert answers["stack_answers"]["module_path"] == "github.com/metalayerlab/demo"
+    assert "puid_pgid" not in answers["stack_answers"] and "base_answers" not in answers["stack_answers"]
+    compose = (dst / "contrib/docker/compose.yml").read_text()
+    assert "PUID" not in compose and "3128" in compose
+    build_text = (dst / ".github/workflows/container-build.yml").read_text()
+    assert " docker/" not in build_text.split("-- Dockerfile .dockerignore")[1].splitlines()[0]
+    build = yaml.safe_load(build_text)
+    assert build[True]["workflow_run"] == {"workflows": ["Release"], "types": ["completed"], "branches": ["main"]}
+    assert ("Smoke test (/healthz)" in build_text) == (kind == "service")
+    deployment = yaml.safe_load((dst / "contrib/k8s/deployment.yaml").read_text())
+    (container,) = deployment["spec"]["template"]["spec"]["containers"]
+    assert container["args"] == ["serve"]
+    assert {"name": "DEMO_CONFIG", "value": "/etc/demo/config.yaml"} in container["env"]
+    assert container["readinessProbe"]["httpGet"]["path"] == "/readyz"
+    assert "# A Prometheus scraper" not in (dst / "contrib/k8s/networkpolicy.yaml").read_text()
+
+
+def test_go_stack_needs_an_image(base_src: Path, container_src: Path, tmp_path: Path) -> None:
+    dst = tmp_path / "p"
+    copy(base_src, dst, BASE)
+    go_answers(dst, container_image=False)
+    with pytest.raises(Exception, match=re.escape("needs the stack answer container_image: true (template-go)")):
         copy(container_src, dst, {})
 
 
