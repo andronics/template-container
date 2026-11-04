@@ -2,8 +2,9 @@
 
 A **feature overlay** for a project that ships a container image. It goes on top of
 [template-base](https://github.com/andronics/template-base) and a code stack overlay
-([template-python](https://github.com/andronics/template-python) or
-[template-typescript](https://github.com/andronics/template-typescript)) whose `container_image` answer is
+([template-python](https://github.com/andronics/template-python),
+[template-typescript](https://github.com/andronics/template-typescript) or
+[template-go](https://github.com/andronics/template-go)) whose `container_image` answer is
 true:
 
 ```sh

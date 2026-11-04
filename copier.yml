@@ -1,5 +1,6 @@
 # template-container: a feature overlay for a project that ships a container image. It goes
-# on top of template-base and a code stack overlay (template-python or template-typescript),
+# on top of template-base and a code stack overlay (template-python, template-typescript or
+# template-go),
 # whose answers it reads (it never asks their questions again):
 #
 #   uvx copier copy --trust gh:andronics/template-base my-project
@@ -20,6 +21,7 @@ _external_data:
   base: .copier-answers.base.yml
   python: .copier-answers.stack-python.yml
   typescript: .copier-answers.stack-typescript.yml
+  go: .copier-answers.stack-go.yml
 
 # GitHub Actions uses ${{ }}, so Jinja uses [[ ]] / [% %] instead.
 _envops:
@@ -62,13 +64,13 @@ stack:
   ask: false
   default: >-
     [%- set found = [] -%]
-    [%- for name in ['python', 'typescript'] -%]
+    [%- for name in ['python', 'typescript', 'go'] -%]
     [%- if _external_data[name] -%][%- set _ = found.append(name) -%][%- endif -%]
     [%- endfor -%]
     [[ found | join(',') ]]
   validator: >-
     [%- set found = [] -%]
-    [%- for name in ['python', 'typescript'] -%]
+    [%- for name in ['python', 'typescript', 'go'] -%]
     [%- if _external_data[name] -%][%- set _ = found.append(name) -%][%- endif -%]
     [%- endfor -%]
     [% if found and stack != found | join(',') %]stale: reread the stack's answers file[% endif %]
@@ -98,7 +100,7 @@ compat_check:
     [%- elif not b -%][[ {}['template-container needs template-base first: .copier-answers.base.yml is missing'].stop ]]
     [%- elif not bv or (bv | map('int') | list) < [2, 0, 0] -%][[ {}['template-container needs template-base v2.0.0 or later; this project has ' ~ b].stop ]]
     [%- elif ',' in stack -%][[ {}['template-container found more than one stack overlay: ' ~ stack].stop ]]
-    [%- elif not stack -%][[ {}['template-container needs a stack overlay first: template-python or template-typescript'].stop ]]
+    [%- elif not stack -%][[ {}['template-container needs a stack overlay first: template-python, template-typescript or template-go'].stop ]]
     [%- elif not cv or (cv | map('int') | list) < [1, 0, 0] -%][[ {}['template-container needs template-' ~ stack ~ ' v1.0.0 or later; this project has ' ~ c].stop ]]
     [%- elif not (stack_answers.container_image | default(false)) -%][[ {}['template-container needs the stack answer container_image: true (template-' ~ stack ~ ')'].stop ]]
     [%- else -%]ok[%- endif -%]
@@ -153,6 +155,7 @@ timezone:
   default: "[[ s.timezone | default('Europe/London') ]]"
   when: false
 
+# Go has no puid_pgid (its image has no shell for the shim): absent reads as false.
 puid_pgid:
   type: bool
   default: "[[ s.puid_pgid | default(false) ]]"
@@ -163,7 +166,7 @@ contrib:
   default: "[[ s.contrib | default([]) | tojson ]]"
   when: false
 
-# Python's settings prefix comes from its package name; TypeScript's from the project name.
+# Python's settings prefix comes from its package name; TypeScript's and Go's from the project name.
 env_prefix:
   type: str
   default: "[[ (s.package_name | default(project_name | replace('-', '_'))) | upper ]]_"
