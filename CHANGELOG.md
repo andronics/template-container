@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.2](https://github.com/andronics/template-container/compare/v2.2.1...v2.2.2) (2026-11-04)
+
+
+### 📚 Documentation
+
+* **decisions:** the go stack's Release and puid_pgid ([#22](https://github.com/andronics/template-container/issues/22)) ([d284fcd](https://github.com/andronics/template-container/commit/d284fcdbaec5bd99d71b1fbdfb696a34376d04b2))
+
 ## [2.2.1](https://github.com/andronics/template-container/compare/v2.2.0...v2.2.1) (2026-11-04)
 
 
