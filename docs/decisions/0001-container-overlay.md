@@ -27,9 +27,10 @@ feature overlay.
 - **Asks** only `multi_arch`. **Reads** base's answers, and the one stack's: `kind`, `port`,
   `extra_ports`, `health_path`, `timezone`, `puid_pgid`, `contrib`, and `package_name` for Python's
   settings prefix.
-- **It names the stacks it supports** (`_external_data`: `python`, `typescript`; a missing file reads as
-  `{}`), and exactly one must be applied. Base still names no overlay, and the dependency points from the
-  feature to the stack. A new stack is one line here.
+- **It names the stacks it supports** (`_external_data`: `python`, `typescript`, `go`; a missing file
+  reads as `{}`), and exactly one must be applied. Base still names no overlay, and the dependency points
+  from the feature to the stack. A new stack is a few lines here: its answers file in `_external_data`,
+  its name in both of `stack`'s lists (default and validator), and in the no-stack error message.
 - **It fails the copy with the reason** when base is missing or older than `v2.0.0`, the stack missing or older than `v1.0.0`, when
   there are two stacks, or when the stack's `container_image` isn't true.
 - **Release → image:** `container-build.yml` runs on `workflow_run` of the stack's `Release` workflow
@@ -64,3 +65,9 @@ feature overlay.
 ## Open questions
 
 None.
+
+## Change log
+
+| Date | Change |
+|---|---|
+| 2026-11-04 | Names template-go among the supported stacks (added in v2.2.0), and says what adding a stack takes in place of "one line"; wording only |
