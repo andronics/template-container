@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/andronics/template-container/compare/v2.2.0...v2.2.1) (2026-11-04)
+
+
+### 📚 Documentation
+
+* **decisions:** name template-go among container's stacks ([#20](https://github.com/andronics/template-container/issues/20)) ([5f53478](https://github.com/andronics/template-container/commit/5f53478114317393d8cbfd73f00e11b2df2d600b))
+
 ## [2.2.0](https://github.com/andronics/template-container/compare/v2.1.1...v2.2.0) (2026-11-04)
 
 
