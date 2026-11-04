@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/andronics/template-container/compare/v2.1.1...v2.2.0) (2026-11-04)
+
+
+### ✨ Features
+
+* **stacks:** support the go overlay ([#18](https://github.com/andronics/template-container/issues/18)) ([cd35e9b](https://github.com/andronics/template-container/commit/cd35e9b8aa428fbe0767b131b21997a2b45f46d2))
+
 ## [2.1.1](https://github.com/andronics/template-container/compare/v2.1.0...v2.1.1) (2026-11-03)
 
 
