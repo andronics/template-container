@@ -115,10 +115,10 @@ def container_src(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 def render(base_src: Path, stack_src: Path | None, container_src: Path | None, dst: Path, stack: dict,
-           container: dict | None = None, bootstrap: bool = True) -> Path:  # fmt: skip
+           container: dict | None = None, bootstrap: bool = True, base: dict | None = None) -> Path:  # fmt: skip
     if stack_src is None:
         pytest.skip("the stack overlay isn't checked out next to this repository")
-    copy(base_src, dst, BASE)
+    copy(base_src, dst, {**BASE, **(base or {})})
     copy(stack_src, dst, stack)
     if container_src is not None:
         copy(container_src, dst, container or {})

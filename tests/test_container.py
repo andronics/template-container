@@ -289,3 +289,23 @@ def test_stack_answer_change_reaches_the_manifests(base_src: Path, stacks: dict,
     assert "9191" in (project / "contrib/docker/compose.yml").read_text()
     assert yaml.safe_load(answers.read_text())["stack_answers"]["port"] == 9191
     assert "<<<<<<<" not in sh("git", "diff", cwd=project)
+
+
+# Outside the Basic Multilingual Plane (💡), CJK, a quote and a backslash: `tojson` wrote the emoji
+# as a surrogate pair, which YAML reads back as two characters.
+UNICODE = 'Ideas 💡 in 漢字, with a "quote" and a back\\slash'
+
+
+def test_unicode_description(base_src: Path, stacks: dict, container_src: Path, tmp_path: Path) -> None:
+    """Any Unicode in base's description renders: the recorded base answers match base's file (no
+    "stale" error), and the project passes its checks and the stack's manifest check."""
+    project = render(base_src, stacks["python"], container_src, tmp_path / "demo",
+                     {"kind": "service", "container_image": True, "contrib": ["docker", "k8s"]},
+                     base={"description": UNICODE})  # fmt: skip
+    answers = yaml.safe_load((project / ".copier-answers.container.yml").read_text())
+    assert answers["base_answers"]["description"] == UNICODE
+    assert answers["stack_answers"]["contrib"] == ["docker", "k8s"]
+    result = checks(project)
+    assert result.returncode == 0, result.stdout + result.stderr
+    result = run(project, "bash", "scripts/check-manifests.sh")
+    assert result.returncode == 0 and "manifests OK" in result.stdout, result.stdout + result.stderr
