@@ -25,8 +25,8 @@ feature overlay.
   keeps its `container_image` and `contrib` answers, because its wiki, `.standard.toml` and release-please's
   `extra-files` need them before this overlay is applied.
 - **Asks** only `multi_arch`. **Reads** base's answers, and the one stack's: `kind`, `port`,
-  `extra_ports`, `health_path`, `timezone`, `puid_pgid`, `contrib`, and `package_name` for Python's
-  settings prefix.
+  `extra_ports`, `health_path`, `timezone`, `puid_pgid` (Go has none; absent reads as false), `contrib`,
+  and `package_name` for Python's settings prefix.
 - **It names the stacks it supports** (`_external_data`: `python`, `typescript`, `go`; a missing file
   reads as `{}`), and exactly one must be applied. Base still names no overlay, and the dependency points
   from the feature to the stack. A new stack is a few lines here: its answers file in `_external_data`,
@@ -34,8 +34,8 @@ feature overlay.
 - **It fails the copy with the reason** when base is missing or older than `v2.0.0`, the stack missing or older than `v1.0.0`, when
   there are two stacks, or when the stack's `container_image` isn't true.
 - **Release → image:** `container-build.yml` runs on `workflow_run` of the stack's `Release` workflow
-  (both stacks name it that). It builds the `v*` tag that points at the run's head commit, if there is
-  one, and moves `:latest`. `workflow_run` fires even when release-please used `GITHUB_TOKEN`, and the
+  (all three stacks, python, typescript and go, name it that). It builds the `v*` tag that points at the
+  run's head commit, if there is one, and moves `:latest`. `workflow_run` fires even when release-please used `GITHUB_TOKEN`, and the
   stack's release workflow never names this overlay's file. Manual dispatch rebuilds a given tag, as
   before.
 - **`base_answers`, `stack` and `stack_answers`:** recorded as answers of this overlay (`ask: false`, with
@@ -71,3 +71,4 @@ None.
 | Date | Change |
 |---|---|
 | 2026-11-04 | Names template-go among the supported stacks (added in v2.2.0), and says what adding a stack takes in place of "one line"; wording only |
+| 2026-11-04 | Says all three stacks name their release workflow `Release` (template-go v1.0.0 ships `go-release.yml` named so), and that Go has no `puid_pgid`, which reads as false; wording only |
