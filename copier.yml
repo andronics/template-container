@@ -52,7 +52,7 @@ _message_after_update: |
 base_answers:
   type: yaml
   ask: false
-  default: "[[ dict(_external_data.base | items | rejectattr('0', 'in', ['_commit', '_src_path'])) | tojson ]]"
+  default: "[[ dict(_external_data.base | items | rejectattr('0', 'in', ['_commit', '_src_path'])) | to_json(ensure_ascii=False) ]]"
   validator: >-
     [% if _external_data.base and base_answers != dict(_external_data.base | items
        | rejectattr('0', 'in', ['_commit', '_src_path'])) %]stale: reread .copier-answers.base.yml[% endif %]
@@ -78,7 +78,7 @@ stack:
 stack_answers:
   type: yaml
   ask: false
-  default: "[[ (dict(_external_data[stack] | items | rejectattr('0', 'in', ['_commit', '_src_path', 'base_answers'])) if stack and ',' not in stack else {}) | tojson ]]"
+  default: "[[ (dict(_external_data[stack] | items | rejectattr('0', 'in', ['_commit', '_src_path', 'base_answers'])) if stack and ',' not in stack else {}) | to_json(ensure_ascii=False) ]]"
   validator: >-
     [% if stack and ',' not in stack and _external_data[stack] and stack_answers != dict(_external_data[stack] | items
        | rejectattr('0', 'in', ['_commit', '_src_path', 'base_answers'])) %]stale: reread the stack's answers file[% endif %]
@@ -109,7 +109,7 @@ compat_check:
 s:
   type: yaml
   when: false
-  default: "[[ stack_answers | tojson ]]"
+  default: "[[ stack_answers | to_json(ensure_ascii=False) ]]"
 
 project_name:
   type: str
@@ -142,7 +142,7 @@ port:
 
 extra_ports:
   type: yaml
-  default: "[[ s.extra_ports | default([]) | tojson ]]"
+  default: "[[ s.extra_ports | default([]) | to_json(ensure_ascii=False) ]]"
   when: false
 
 health_path:
@@ -163,7 +163,7 @@ puid_pgid:
 
 contrib:
   type: yaml
-  default: "[[ s.contrib | default([]) | tojson ]]"
+  default: "[[ s.contrib | default([]) | to_json(ensure_ascii=False) ]]"
   when: false
 
 # Python's settings prefix comes from its package name; TypeScript's and Go's from the project name.
